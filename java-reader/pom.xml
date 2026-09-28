@@ -6,7 +6,7 @@
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <plc4x.version>0.13.1</plc4x.version>
+    <plc4x.version>0.13.0</plc4x.version>
   </properties>
   <dependencies>
     <dependency>
