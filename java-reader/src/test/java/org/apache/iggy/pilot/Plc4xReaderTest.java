@@ -1,6 +1,7 @@
 package org.apache.iggy.pilot;
 
 import org.apache.plc4x.java.api.messages.PlcReadResponse;
+import org.apache.plc4x.java.api.messages.PlcReadRequest;
 import org.apache.plc4x.java.api.types.PlcResponseCode;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,6 @@ import org.apache.plc4x.java.api.PlcConnection;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,14 +39,15 @@ class Plc4xReaderTest {
 
     @Test
     void readsConfiguredTagThroughMockedPlcConnection() throws Exception {
-        PlcConnection connection = mock(PlcConnection.class, RETURNS_DEEP_STUBS);
+        PlcConnection connection = mock(PlcConnection.class);
+        PlcReadRequest.Builder requestBuilder = mock(PlcReadRequest.Builder.class);
+        PlcReadRequest request = mock(PlcReadRequest.class);
         PlcReadResponse response = mock(PlcReadResponse.class);
         Plc4xReader.Tag tag = new Plc4xReader.Tag("temperature", "holding-register:0:UINT");
-        when(connection.readRequestBuilder()
-                .addTagAddress(tag.name(), tag.address())
-                .build()
-                .execute())
-                .thenReturn(CompletableFuture.completedFuture(response));
+        when(connection.readRequestBuilder()).thenReturn(requestBuilder);
+        when(requestBuilder.addTagAddress(tag.name(), tag.address())).thenReturn(requestBuilder);
+        when(requestBuilder.build()).thenReturn(request);
+        when(request.execute()).thenAnswer(ignored -> CompletableFuture.completedFuture(response));
         when(response.getResponseCode("temperature")).thenReturn(PlcResponseCode.OK);
         when(response.getObject("temperature")).thenReturn(237);
 

@@ -104,16 +104,24 @@ pub async fn create_database(
     let response = client
         .post(endpoint)
         .basic_auth(user, Some(password))
-        .json(&serde_json::json!({ "sql": format!("CREATE DATABASE IF NOT EXISTS {database}") }))
+        .json(&serde_json::json!({ "sql": format!("CREATE DATABASE {database}") }))
         .send()
         .await
         .context("creating IoTDB database")?;
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
-    let rejected = serde_json::from_str::<serde_json::Value>(&body)
-        .ok()
-        .and_then(|response| response.get("code").and_then(serde_json::Value::as_i64))
-        .is_some_and(|code| code != 200);
+    let response_json = serde_json::from_str::<serde_json::Value>(&body).ok();
+    let code = response_json
+        .as_ref()
+        .and_then(|response| response.get("code"))
+        .and_then(serde_json::Value::as_i64);
+    let already_exists = code == Some(501)
+        && response_json
+            .as_ref()
+            .and_then(|response| response.get("message"))
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("has already been created as database"));
+    let rejected = code.is_some_and(|code| code != 200) && !already_exists;
     if !status.is_success() || rejected {
         bail!("IoTDB database setup failed ({status}): {body}");
     }

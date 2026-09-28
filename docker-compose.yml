@@ -12,10 +12,19 @@ services:
     image: apache/iggy:edge
     ports:
       - "8090:8090"
+    environment:
+      IGGY_TCP_ADDRESS: "0.0.0.0:8090"
+      IGGY_NODE_ADVERTISED_ADDRESS: "iggy"
+      IGGY_ROOT_USERNAME: "iggy"
+      IGGY_ROOT_PASSWORD: "iggy"
+    security_opt:
+      - seccomp:unconfined
     restart: unless-stopped
 
   iotdb:
     image: apache/iotdb:2.0.5-standalone
+    environment:
+      enable_rest_service: "true"
     ports:
       - "6667:6667"
       - "18080:18080"
@@ -23,14 +32,14 @@ services:
 
   modbus-simulator:
     build: .
-    command: ["/app/modbus-simulator"]
+    entrypoint: ["/app/modbus-simulator"]
     expose:
       - "502"
     restart: unless-stopped
 
   plc4x-bridge:
     build: .
-    command: ["/app/plc4x-mqtt-bridge"]
+    entrypoint: ["/app/plc4x-mqtt-bridge"]
     depends_on:
       - bifromq
       - modbus-simulator
@@ -42,7 +51,7 @@ services:
 
   mqtt-to-iggy:
     build: .
-    command: ["/app/mqtt-to-iggy"]
+    entrypoint: ["/app/mqtt-to-iggy"]
     depends_on:
       - bifromq
       - iggy
@@ -54,7 +63,7 @@ services:
 
   iggy-to-iotdb:
     build: .
-    command: ["/app/iggy-to-iotdb"]
+    entrypoint: ["/app/iggy-to-iotdb"]
     depends_on:
       - iggy
       - iotdb

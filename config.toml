@@ -5,7 +5,7 @@ poll_interval_ms = 1000
 
 [[plc.tags]]
 name = "temperature"
-address = "holding-register:0:UINT"
+address = "holding-register:1:UINT"
 
 [mqtt]
 host = "bifromq"

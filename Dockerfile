@@ -18,4 +18,3 @@ COPY --from=rust-build /src/target/release/iggy-to-iotdb /app/
 COPY --from=rust-build /src/target/release/modbus-simulator /app/
 COPY --from=plc4x-build /src/target/plc4x-reader.jar /app/
 ENV PILOT_CONFIG=/app/config.toml
-ENTRYPOINT ["/app/plc4x-mqtt-bridge"]
