@@ -1,0 +1,85 @@
+services:
+  bifromq:
+    image: apache/bifromq:4.0.0-incubating
+    ports:
+      - "1883:1883"
+    mem_limit: 2g
+    environment:
+      MEM_LIMIT: "2147483648"
+    restart: unless-stopped
+
+  iggy:
+    image: apache/iggy:edge
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+
+  iotdb:
+    image: apache/iotdb:2.0.5-standalone
+    ports:
+      - "6667:6667"
+      - "18080:18080"
+    restart: unless-stopped
+
+  modbus-simulator:
+    build: .
+    command: ["/app/modbus-simulator"]
+    expose:
+      - "502"
+    restart: unless-stopped
+
+  plc4x-bridge:
+    build: .
+    command: ["/app/plc4x-mqtt-bridge"]
+    depends_on:
+      - bifromq
+      - modbus-simulator
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+    environment:
+      RUST_LOG: info
+    restart: unless-stopped
+
+  mqtt-to-iggy:
+    build: .
+    command: ["/app/mqtt-to-iggy"]
+    depends_on:
+      - bifromq
+      - iggy
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+    environment:
+      RUST_LOG: info
+    restart: unless-stopped
+
+  iggy-to-iotdb:
+    build: .
+    command: ["/app/iggy-to-iotdb"]
+    depends_on:
+      - iggy
+      - iotdb
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+    environment:
+      RUST_LOG: info
+    restart: unless-stopped
+
+  superset:
+    build:
+      context: .
+      dockerfile: Dockerfile.superset
+    ports:
+      - "8088:8088"
+    volumes:
+      - superset_home:/app/superset_home
+    environment:
+      SUPERSET_SECRET_KEY: "pilot-only-change-this-secret-key"
+      SUPERSET_ADMIN_USERNAME: admin
+      SUPERSET_ADMIN_PASSWORD: admin
+      SUPERSET_ADMIN_EMAIL: admin@example.com
+    depends_on:
+      - iotdb
+    restart: unless-stopped
+
+volumes:
+  superset_home:

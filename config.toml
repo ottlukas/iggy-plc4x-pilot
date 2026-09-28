@@ -1,0 +1,27 @@
+[plc]
+endpoint = "modbus-tcp://modbus-simulator:502"
+device = "line_1"
+poll_interval_ms = 1000
+
+[[plc.tags]]
+name = "temperature"
+address = "holding-register:0:UINT"
+
+[mqtt]
+host = "bifromq"
+port = 1883
+topic_prefix = "iggy/plc"
+client_id = "plc4x-pilot"
+
+[iggy]
+address = "iggy:8090"
+username = "iggy"
+password = "iggy"
+stream = "plc_raw"
+topic = "readings"
+
+[iotdb]
+endpoint = "http://iotdb:18080/rest/v2/nonQuery"
+device_prefix = "root.sg"
+username = "root"
+password = "root"

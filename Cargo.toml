@@ -1,0 +1,40 @@
+[package]
+name = "iggy-plc4x-pilot"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+members = ["."]
+resolver = "3"
+
+[[bin]]
+name = "plc4x-mqtt-bridge"
+path = "src/bin/plc4x-mqtt-bridge.rs"
+
+[[bin]]
+name = "mqtt-to-iggy"
+path = "src/bin/mqtt-to-iggy.rs"
+
+[[bin]]
+name = "iggy-to-iotdb"
+path = "src/bin/iggy-to-iotdb.rs"
+
+[[bin]]
+name = "modbus-simulator"
+path = "src/bin/modbus-simulator.rs"
+
+[dependencies]
+anyhow = "1"
+futures-util = "0.3"
+iggy = "0.11"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+rumqttc = "0.25"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "net", "process", "rt-multi-thread", "io-util", "time"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
