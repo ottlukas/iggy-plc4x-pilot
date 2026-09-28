@@ -52,70 +52,45 @@ jobs:
     name: End-to-end pipeline
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
-      PILOT_COMPOSE_PROJECT: iggy-plc4x-ci-${{ github.run_id }}
+      PILOT_COMPOSE_PROJECT: iggy-plc4x-ci-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-          cache-dependency-path: java-reader/pom.xml
       - uses: Swatinem/rust-cache@v2
-      - name: Build Docker images
-        run: docker build -t iggy-plc4x-pilot:ci .
-      - name: Start infrastructure services
-        run: |
-          docker compose -p "$PILOT_COMPOSE_PROJECT" up -d bifromq iggy iotdb
-          # Wait for services to be healthy
-          for service in bifromq iggy iotdb; do
-            echo "Waiting for $service to be ready..."
-            for i in $(seq 1 30); do
-              if docker compose -p "$PILOT_COMPOSE_PROJECT" ps "$service" | grep -q "healthy"; then
-                echo "$service is ready"
-                break
-              fi
-              sleep 2
-            done
-          done
-      - name: Start pipeline services
-        run: |
-          docker compose -p "$PILOT_COMPOSE_PROJECT" up -d modbus-simulator plc4x-bridge mqtt-to-iggy iggy-to-iotdb
-          # Wait for data to flow through the pipeline
-          sleep 60
-      - name: Verify data in IoTDB
-        run: |
-          # Query IoTDB to verify data was written
-          response=$(curl -s -w "%{http_code}" -u root:root -d '{"sql":"SELECT temperature FROM root.sg.line_1"}' http://localhost:18080/rest/v2/query)
-          http_code=${response: -3}
-          if [ "$http_code" != "200" ]; then
-            echo "IoTDB query failed with HTTP code: $http_code"
-            echo "Response: ${response%???}"
-            exit 1
-          fi
-          # Check if response contains data
-          if ! echo "${response%???}" | grep -q "values"; then
-            echo "No data found in IoTDB"
-            echo "Response: ${response%???}"
-            exit 1
-          fi
-          echo "Data successfully written to IoTDB"
-      - name: Tear down integration stack
-        if: always()
-        run: docker compose -p "$PILOT_COMPOSE_PROJECT" down --volumes --remove-orphans
+      - name: Run Docker-backed integration test
+        run: cargo test --locked --features integration --test integration -- --nocapture
 
   build-images:
-    name: Build runtime image
+    name: Build and publish images
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish runtime image
+        uses: docker/build-push-action@v6
         with:
           context: .
-          push: false
-          tags: iggy-plc4x-pilot:ci
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/iggy-plc4x-pilot:latest
+            ghcr.io/${{ github.repository_owner }}/iggy-plc4x-pilot:${{ github.sha }}
+      - name: Publish Superset image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.superset
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/iggy-plc4x-superset:latest
+            ghcr.io/${{ github.repository_owner }}/iggy-plc4x-superset:${{ github.sha }}

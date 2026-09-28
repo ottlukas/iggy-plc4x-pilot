@@ -29,7 +29,7 @@ docker compose up --build -d
 
 Compose starts Apache BifroMQ, Apache Iggy, Apache IoTDB, the PLC4X bridge, the MQTT/Iggy relays, the Modbus simulator, and Apache Superset. The simulator increments holding register 0 on each read; the sample config polls it once per second. To use a real PLC, change `plc.endpoint` and the static tag addresses in [config.toml](config.toml). The PLC must be reachable from the Docker network.
 
-The Compose configuration enables IoTDB's REST service and configures Iggy 0.9 for container access, io_uring, and the development credentials used by the relays. `seccomp:unconfined` is required by the Iggy edge image in this pilot; use a narrower custom seccomp profile for deployments that need stronger isolation.
+The Compose configuration enables IoTDB's REST service and uses the Iggy edge image with development credentials for the relays. `seccomp:unconfined` is required by the Iggy image in this pilot; use a narrower custom seccomp profile for deployments that need stronger isolation.
 
 Open Superset at [http://localhost:8088](http://localhost:8088) and sign in with `admin` / `admin`. In **Data > Databases**, choose **Other** and add a database using the SQLAlchemy URI (do not add a `/default` path; the IoTDB dialect treats it as an unsupported `database` argument):
 
@@ -37,9 +37,9 @@ Open Superset at [http://localhost:8088](http://localhost:8088) and sign in with
 iotdb://root:root@iotdb:6667
 ```
 
-The URI uses the IoTDB service name and port on Compose's private network. In SQL Lab, select this database and run `SELECT temperature FROM root.sg.line_1` after the pipeline has written its first reading. IoTDB's tree-model paths are not relational tables, so Superset table/schema discovery may fail; use SQL Lab and save a successful query as a virtual dataset when discovery is unavailable. The pilot repository does not include a `plc-control` HMI service, so an iframe targeting that hostname requires a separately deployed HMI.
+The URI uses the IoTDB service name and port on Compose's private network. In SQL Lab, select this database and run `SELECT temperature FROM root.sg.line_1` after the pipeline has written its first reading. IoTDB's tree-model paths are not relational tables, so Superset table/schema discovery may fail. Direct SQL Lab queries are verified; chart Explore currently fails because `apache-iotdb` 2.0.11's compiler is incompatible with Superset 4.1.1's SQLAlchemy 1.4.52. Do not treat charts/dashboards as supported until a compatible dialect release is available. The pilot repository does not include a `plc-control` HMI service, so an iframe targeting that hostname requires a separately deployed HMI.
 
-Runtime verification on 2026-09-28 confirmed the Superset-to-IoTDB SQLAlchemy connection, but `SHOW TIMESERIES` returned no rows. The current `iggy-to-iotdb` consumer repeatedly reports `Partition with ID: 0 for topic with ID: 0 for stream with ID: 0 was not found`, so PLC readings have not reached IoTDB and a live chart/dashboard has not been verified. Resolve Iggy client/server partition compatibility before treating the visualization as operational.
+The Iggy topic has one partition, whose ID is zero. The IoTDB writer consumes partition zero; after startup, confirm readings with `SELECT temperature FROM root.sg.line_1` in both IoTDB REST and Superset SQL Lab. See [TEST_REPORT.md](TEST_REPORT.md) for the latest local validation and [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common failure checks.
 
 The IoTDB REST API is also exposed on host port `18080`; Superset itself connects over the Docker network. PLC4X Modbus register addresses are one-based, so the sample's `holding-register:1:UINT` reads simulator wire register zero. Stop the stack with `docker compose down`. Persistent Superset metadata is stored in the `superset_home` named volume.
 
@@ -88,7 +88,7 @@ docker compose up --wait --wait-timeout 90 -d bifromq iggy iotdb
 docker compose down --remove-orphans
 ```
 
-GitHub Actions runs formatting, Clippy, Maven compilation, Compose validation, and unit tests on pushes and pull requests. The Docker-backed end-to-end test runs on pull requests and pushes to `main`; the runtime image is built on pushes to `main`.
+GitHub Actions runs formatting, Clippy, Maven compilation/tests, Compose validation, and Rust unit tests on pushes and pull requests. The Docker-backed end-to-end test runs on pull requests and pushes to `main`. On pushes to `main`, runtime and Superset images are published to GitHub Container Registry as `ghcr.io/ottlukas/iggy-plc4x-pilot` and `ghcr.io/ottlukas/iggy-plc4x-superset`, tagged `latest` and with the commit SHA. No remote deployment target is configured; deployment is through Docker Compose.
 
 ## Future Phases
 

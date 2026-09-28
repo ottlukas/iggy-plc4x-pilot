@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
     )
     .await?;
     let mut consumer = client
-        .consumer("iotdb-writer", &config.iggy.stream, &config.iggy.topic, 1)?
+        .consumer("iotdb-writer", &config.iggy.stream, &config.iggy.topic, 0)?
         .auto_commit(AutoCommit::Disabled)
         .polling_strategy(PollingStrategy::next())
         .init_retries(
