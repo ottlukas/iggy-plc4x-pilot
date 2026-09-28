@@ -61,7 +61,16 @@ pub async fn write(
     payload: &[u8],
 ) -> Result<()> {
     let reading: Reading = serde_json::from_slice(payload).context("decoding PLC reading")?;
-    let sql = reading.insert_sql()?;
+    execute_sql(client, endpoint, user, password, &reading.insert_sql()?).await
+}
+
+pub async fn execute_sql(
+    client: &reqwest::Client,
+    endpoint: &str,
+    user: &str,
+    password: &str,
+    sql: &str,
+) -> Result<()> {
     let response = client
         .post(endpoint)
         .basic_auth(user, Some(password))

@@ -1,5 +1,7 @@
 # iggy-plc4x-connector: Pilot Prototype
 
+[![CI](https://github.com/ottlukas/iggy-plc4x-pilot/actions/workflows/ci.yml/badge.svg)](https://github.com/ottlukas/iggy-plc4x-pilot/actions/workflows/ci.yml)
+
 An experimental PLC-to-Iggy-to-IoTDB pipeline with Apache Superset for visualization. Static Modbus TCP tags are read through Apache PLC4X, published to Apache BifroMQ over MQTT, appended to Iggy, and written into IoTDB. This validates the pipeline; it is not production software.
 
 ## Architecture
@@ -58,6 +60,31 @@ MQTT topic: `iggy/plc/line_1/temperature`. The MQTT relay stores the JSON bytes 
 - IoTDB writes use a Rust Iggy consumer and the IoTDB 2.0 REST API, not an Iggy sink plugin. Failed writes are retried and Iggy offsets are committed after success. A crash between write and commit may repeat the same point.
 - Superset uses IoTDB's experimental SQLAlchemy dialect. IoTDB documents it as not production-ready; it is included only to demonstrate dashboard connectivity.
 - No production retry policy, credentials management, metrics, tag discovery, TLS, or protocol support beyond Modbus TCP. Sample passwords and anonymous development broker access are unsafe outside an isolated pilot network.
+
+## Testing
+
+Rust unit tests and Java unit tests use mocks or pure transformations and do not need Docker or a PLC:
+
+```sh
+cargo test --locked
+mvn -f java-reader/pom.xml test
+```
+
+The Rust integration test starts the repository's BifroMQ, Iggy, IoTDB, Modbus simulator, and three pipeline services with Docker Compose. It waits for a temperature reading in IoTDB and tears down its isolated Compose project afterward. It is excluded from ordinary `cargo test` runs; run it explicitly with:
+
+```sh
+cargo test --locked --features integration --test integration -- --nocapture
+```
+
+Docker Compose configuration and startup are checked separately with:
+
+```sh
+docker compose config --quiet
+docker compose up --wait --wait-timeout 90 -d bifromq iggy iotdb
+docker compose down --remove-orphans
+```
+
+GitHub Actions runs formatting, Clippy, Maven compilation, Compose validation, and unit tests on pushes and pull requests. The Docker-backed end-to-end test runs on pull requests and pushes to `main`; the runtime image is built on pushes to `main`.
 
 ## Future Phases
 

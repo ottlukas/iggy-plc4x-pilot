@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
                     break;
                 }
                 let length = u16::from_be_bytes([header[4], header[5]]) as usize;
-                if length < 2 || length > 254 {
+                if !(2..=254).contains(&length) {
                     break;
                 }
                 let mut pdu = vec![0_u8; length - 1];

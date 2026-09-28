@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 public final class Plc4xReader {
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private record Tag(String name, String address) {}
+    record Tag(String name, String address) {}
 
     public static void main(String[] args) throws Exception {
         Map<String, String> options = new LinkedHashMap<>();
@@ -41,19 +41,14 @@ public final class Plc4xReader {
         DefaultPlcDriverManager manager = new DefaultPlcDriverManager();
         while (!Thread.currentThread().isInterrupted()) {
             try (PlcConnection connection = manager.getConnection(endpoint)) {
-                var request = connection.readRequestBuilder();
-                for (Tag tag : tags) request.addTagAddress(tag.name(), tag.address());
-                PlcReadResponse response = request.build().execute().get(10, TimeUnit.SECONDS);
+                PlcReadResponse response = readTags(connection, tags);
                 for (Tag tag : tags) {
-                    if (!response.getResponseCode(tag.name()).name().equals("OK")) {
+                    Map<String, Object> reading = toReading(
+                            response, tag, devicePrefix + "." + device, System.currentTimeMillis());
+                    if (reading == null) {
                         System.err.println("PLC4X read failed for " + tag.name() + ": " + response.getResponseCode(tag.name()));
                         continue;
                     }
-                    Map<String, Object> reading = new LinkedHashMap<>();
-                    reading.put("device", devicePrefix + "." + device);
-                    reading.put("timestamp", System.currentTimeMillis());
-                    reading.put("measurements", List.of(tag.name()));
-                    reading.put("values", List.of(response.getObject(tag.name())));
                     System.out.println("READING:" + JSON.writeValueAsString(reading));
                     System.out.flush();
                 }
@@ -68,5 +63,22 @@ public final class Plc4xReader {
         String value = options.get(key);
         if (value == null || value.isBlank()) throw new IllegalArgumentException("missing " + key);
         return value;
+    }
+
+    static Map<String, Object> toReading(
+            PlcReadResponse response, Tag tag, String device, long timestamp) {
+        if (!response.getResponseCode(tag.name()).name().equals("OK")) return null;
+        Map<String, Object> reading = new LinkedHashMap<>();
+        reading.put("device", device);
+        reading.put("timestamp", timestamp);
+        reading.put("measurements", List.of(tag.name()));
+        reading.put("values", List.of(response.getObject(tag.name())));
+        return reading;
+    }
+
+    static PlcReadResponse readTags(PlcConnection connection, List<Tag> tags) throws Exception {
+        var request = connection.readRequestBuilder();
+        for (Tag tag : tags) request.addTagAddress(tag.name(), tag.address());
+        return request.build().execute().get(10, TimeUnit.SECONDS);
     }
 }

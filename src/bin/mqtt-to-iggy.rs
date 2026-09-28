@@ -1,6 +1,6 @@
 use anyhow::Result;
 use iggy::prelude::*;
-use iggy_plc4x_pilot::{config::Config, iggy_client, mqtt};
+use iggy_plc4x_pilot::{config::Config, iggy_client, mqtt, pipeline};
 use rumqttc::{Event, Incoming};
 use std::str::FromStr;
 use tracing_subscriber::EnvFilter;
@@ -36,8 +36,15 @@ async fn main() -> Result<()> {
                 mqtt::subscribe(&mqtt_client, &filter).await?
             }
             Ok(Event::Incoming(Incoming::Publish(message))) => {
-                let payload = std::str::from_utf8(&message.payload)?;
-                producer.send_one(IggyMessage::from_str(payload)?).await?;
+                let producer = &producer;
+                pipeline::forward_mqtt_payload(
+                    |payload| async move {
+                        producer.send_one(IggyMessage::from_str(&payload)?).await?;
+                        Ok(())
+                    },
+                    &message.payload,
+                )
+                .await?;
                 tracing::debug!(topic = %message.topic, "appended MQTT reading to Iggy");
             }
             Ok(_) => {}

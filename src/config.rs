@@ -94,3 +94,84 @@ pub fn is_identifier(value: &str) -> bool {
     matches!(chars.next(), Some(ch) if ch.is_ascii_alphabetic() || ch == '_')
         && chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const VALID_CONFIG: &str = r#"
+        [plc]
+        endpoint = "modbus-tcp://localhost:502"
+        device = "line_1"
+        poll_interval_ms = 100
+        [[plc.tags]]
+        name = "temperature"
+        address = "holding-register:0:UINT"
+
+        [mqtt]
+        host = "localhost"
+        port = 1883
+        topic_prefix = "iggy/plc"
+        client_id = "test-client"
+
+        [iggy]
+        address = "localhost:8090"
+        username = "iggy"
+        password = "iggy"
+        stream = "plc_raw"
+        topic = "readings"
+
+        [iotdb]
+        endpoint = "http://localhost:18080/rest/v2/nonQuery"
+        device_prefix = "root.sg"
+        username = "root"
+        password = "root"
+    "#;
+
+    fn parse_and_validate(contents: &str) -> Result<Config> {
+        let config: Config = toml::from_str(contents)?;
+        config.validate()?;
+        Ok(config)
+    }
+
+    #[test]
+    fn parses_and_validates_complete_config() {
+        let config = parse_and_validate(VALID_CONFIG).unwrap();
+        assert_eq!(config.plc.tags[0].name, "temperature");
+        assert_eq!(config.mqtt.port, 1883);
+        assert_eq!(config.iotdb.device_prefix, "root.sg");
+    }
+
+    #[test]
+    fn rejects_zero_poll_interval() {
+        let invalid = VALID_CONFIG.replace("poll_interval_ms = 100", "poll_interval_ms = 0");
+        assert!(
+            parse_and_validate(&invalid)
+                .unwrap_err()
+                .to_string()
+                .contains("poll_interval_ms must be positive")
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_tag_and_device_identifiers() {
+        let invalid_tag = VALID_CONFIG.replace("name = \"temperature\"", "name = \"temp-value\"");
+        assert!(parse_and_validate(&invalid_tag).is_err());
+
+        let invalid_device = VALID_CONFIG.replace("device = \"line_1\"", "device = \"line-1\"");
+        assert!(parse_and_validate(&invalid_device).is_err());
+    }
+
+    #[test]
+    fn rejects_empty_tags_and_non_http_iotdb_endpoint() {
+        let no_tags = VALID_CONFIG.replace(
+            "        [[plc.tags]]\n        name = \"temperature\"\n        address = \"holding-register:0:UINT\"\n",
+            "",
+        );
+        assert!(parse_and_validate(&no_tags).is_err());
+
+        let invalid_endpoint =
+            VALID_CONFIG.replace("http://localhost:18080", "tcp://localhost:18080");
+        assert!(parse_and_validate(&invalid_endpoint).is_err());
+    }
+}

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use futures_util::StreamExt;
 use iggy::prelude::*;
-use iggy_plc4x_pilot::{config::Config, iggy_client, iotdb};
+use iggy_plc4x_pilot::{config::Config, iggy_client, iotdb, pipeline};
 use std::time::Duration;
 use tracing_subscriber::EnvFilter;
 
@@ -48,11 +48,21 @@ async fn main() -> Result<()> {
             }
         };
         loop {
-            match iotdb::write(
-                &http,
-                &config.iotdb.endpoint,
-                &config.iotdb.username,
-                &config.iotdb.password,
+            let http = &http;
+            let endpoint = &config.iotdb.endpoint;
+            let username = &config.iotdb.username;
+            let password = &config.iotdb.password;
+            match pipeline::write_iotdb_reading(
+                |sql| async move {
+                    iotdb::execute_sql(
+                        http,
+                        endpoint,
+                        username,
+                        password,
+                        &sql,
+                    )
+                    .await
+                },
                 &received.message.payload,
             )
             .await

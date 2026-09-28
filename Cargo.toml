@@ -7,6 +7,14 @@ edition = "2024"
 members = ["."]
 resolver = "3"
 
+[features]
+integration = []
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+required-features = ["integration"]
+
 [[bin]]
 name = "plc4x-mqtt-bridge"
 path = "src/bin/plc4x-mqtt-bridge.rs"

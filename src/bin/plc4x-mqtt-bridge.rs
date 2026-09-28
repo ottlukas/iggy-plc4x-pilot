@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use iggy_plc4x_pilot::{config::Config, mqtt};
+use iggy_plc4x_pilot::{config::Config, mqtt, pipeline};
 use rumqttc::QoS;
 use std::process::Stdio;
 use tokio::{
@@ -55,19 +55,18 @@ async fn main() -> Result<()> {
             tracing::debug!(line, "PLC4X reader output");
             continue;
         };
-        let value: serde_json::Value =
-            serde_json::from_str(payload).context("invalid reading from PLC4X helper")?;
-        let device = value["device"].as_str().context("reading missing device")?;
-        let measurement = value["measurements"][0]
-            .as_str()
-            .context("reading missing measurement")?;
-        let topic = format!(
-            "{}/{}/{}",
-            config.mqtt.topic_prefix.trim_end_matches('/'),
-            device,
-            measurement
-        );
-        if let Err(error) = client.publish(topic, QoS::AtMostOnce, false, payload).await {
+        if let Err(error) = pipeline::publish_reading(
+            |topic, payload| async {
+                client
+                    .publish(topic, QoS::AtMostOnce, false, payload)
+                    .await
+                    .map_err(Into::into)
+            },
+            &config.mqtt.topic_prefix,
+            payload.as_bytes(),
+        )
+        .await
+        {
             tracing::warn!(%error, "MQTT publish failed; the next PLC poll will retry");
         }
     }
