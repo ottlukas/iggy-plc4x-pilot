@@ -90,5 +90,19 @@ services:
       - iotdb
     restart: unless-stopped
 
+  hmi:
+    build:
+      context: ./hmi
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config.toml:/app/config.toml:ro
+    environment:
+      COMPOSE_PROJECT_NAME: iggy-plc4x-pilot
+      PILOT_CONFIG: /app/config.toml
+    restart: unless-stopped
+
 volumes:
   superset_home:
