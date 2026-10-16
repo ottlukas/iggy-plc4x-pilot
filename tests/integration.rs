@@ -102,7 +102,7 @@ async fn modbus_to_iotdb_pipeline_writes_a_reading() {
         let result = client
             .post(endpoint)
             .basic_auth("root", Some("root"))
-            .json(&serde_json::json!({ "sql": "SELECT temperature FROM root.sg.line_1" }))
+            .json(&serde_json::json!({"sql": "SELECT temperature FROM root.sg.line_1"}))
             .send()
             .await;
         match result {
@@ -149,7 +149,7 @@ async fn superset_iotdb_connection_works() {
         project,
         manifest_dir,
     };
-    
+
     // Start only the required services for Superset-IoTDB test
     stack
         .start_services(&["bifromq", "iggy", "iotdb", "superset"])
@@ -173,7 +173,7 @@ async fn superset_iotdb_connection_works() {
         let iotdb_result = client
             .post(iotdb_query)
             .basic_auth("root", Some("root"))
-            .json(&serde_json::json!({ "sql": "SHOW DEVICES" }))
+            .json(&serde_json::json!({"sql": "SHOW DEVICES"}))
             .send()
             .await;
 
@@ -205,10 +205,20 @@ async fn hmi_control_api_works() {
         project,
         manifest_dir,
     };
-    
+
     // Start the full pipeline including HMI
     stack
-        .start_services(&["bifromq", "iggy", "iotdb", "modbus-simulator", "plc4x-bridge", "mqtt-to-iggy", "iggy-to-iotdb", "superset", "hmi"])
+        .start_services(&[
+            "bifromq",
+            "iggy",
+            "iotdb",
+            "modbus-simulator",
+            "plc4x-bridge",
+            "mqtt-to-iggy",
+            "iggy-to-iotdb",
+            "superset",
+            "hmi",
+        ])
         .expect("Compose services should start");
 
     let client = reqwest::Client::new();
@@ -228,11 +238,8 @@ async fn hmi_control_api_works() {
 
         if hmi_ready {
             // Check pipeline status
-            let status_result = client
-                .get(hmi_status)
-                .send()
-                .await;
-            
+            let status_result = client.get(hmi_status).send().await;
+
             match status_result {
                 Ok(response) if response.status().is_success() => {
                     let body = response.text().await.unwrap_or_default();
