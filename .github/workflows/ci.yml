@@ -59,36 +59,53 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Build Docker images
+        run: docker compose build
+      - name: Start services for end-to-end test
+        run: |
+          docker compose -p $PILOT_COMPOSE_PROJECT up --build -d bifromq iggy iotdb modbus-simulator plc4x-bridge mqtt-to-iggy iggy-to-iotdb superset hmi
+          docker compose -p $PILOT_COMPOSE_PROJECT ps -a
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to initialize..."
+          for i in {1..24}; do
+            if curl -s http://localhost:18080/rest/v2/settings -u root:root > /dev/null 2>&1; then
+              echo "IoTDB is ready"
+              break
+            fi
+            if [ $i -eq 24 ]; then
+              echo "IoTDB did not become ready"
+              exit 1
+            fi
+            sleep 5
+          done
+          for i in {1..12}; do
+            if curl -s http://localhost:8088/health > /dev/null 2>&1; then
+              echo "Superset is ready"
+              break
+            fi
+            if [ $i -eq 12 ]; then
+              echo "Superset did not become ready"
+              exit 1
+            fi
+            sleep 5
+          done
+          for i in {1..12}; do
+            if curl -s http://localhost:8080/api/health > /dev/null 2>&1; then
+              echo "HMI is ready"
+              break
+            fi
+            if [ $i -eq 12 ]; then
+              echo "HMI did not become ready"
+              exit 1
+            fi
+            sleep 5
+          done
       - name: Run Docker-backed integration test
         run: cargo test --locked --features integration --test integration -- --nocapture
-
-  superset-integration-tests:
-    name: Superset-IoTDB integration
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      PILOT_COMPOSE_PROJECT: iggy-plc4x-superset-${{ github.run_id }}-${{ github.run_attempt }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Run Superset-IoTDB integration test
-        run: cargo test --locked --features integration --test integration superset_iotdb_connection_works -- --nocapture
-
-  hmi-integration-tests:
-    name: HMI control API integration
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      PILOT_COMPOSE_PROJECT: iggy-plc4x-hmi-${{ github.run_id }}-${{ github.run_attempt }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Run HMI integration test
-        run: cargo test --locked --features integration --test integration hmi_control_api_works -- --nocapture
+      - name: Cleanup
+        if: always()
+        run: docker compose -p $PILOT_COMPOSE_PROJECT down --volumes --remove-orphans
 
   build-images:
     name: Build and publish images
