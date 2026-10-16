@@ -1,0 +1,210 @@
+{
+  "dashboard_title": "PLC IoT Data Dashboard",
+  "position": {
+    "DASHBOARD_VERSION_KEY": "v2",
+    "grid_id": {},
+    "DASHBOARD_ROOT_ID": {
+      "children": [
+        "ROW-1",
+        "ROW-2"
+      ],
+      "id": "DASHBOARD_ROOT_ID",
+      "type": "DASHBOARD_ROOT"
+    },
+    "ROW-1": {
+      "children": [
+        "COLUMN-1",
+        "COLUMN-2"
+      ],
+      "id": "ROW-1",
+      "meta": {
+        "code": "ROW-1"
+      },
+      "parents": [
+        "DASHBOARD_ROOT_ID"
+      ],
+      "type": "ROW"
+    },
+    "ROW-2": {
+      "children": [
+        "COLUMN-3"
+      ],
+      "id": "ROW-2",
+      "meta": {
+        "code": "ROW-2"
+      },
+      "parents": [
+        "DASHBOARD_ROOT_ID"
+      ],
+      "type": "ROW"
+    },
+    "COLUMN-1": {
+      "children": [
+        "HEADER-1",
+        "CHART-1"
+      ],
+      "id": "COLUMN-1",
+      "meta": {
+        "code": "COLUMN-1"
+      },
+      "parents": [
+        "ROW-1"
+      ],
+      "type": "COLUMN"
+    },
+    "COLUMN-2": {
+      "children": [
+        "HEADER-2",
+        "CHART-2"
+      ],
+      "id": "COLUMN-2",
+      "meta": {
+        "code": "COLUMN-2"
+      },
+      "parents": [
+        "ROW-1"
+      ],
+      "type": "COLUMN"
+    },
+    "COLUMN-3": {
+      "children": [
+        "HEADER-3",
+        "TABLE-1"
+      ],
+      "id": "COLUMN-3",
+      "meta": {
+        "code": "COLUMN-3"
+      },
+      "parents": [
+        "ROW-2"
+      ],
+      "type": "COLUMN"
+    },
+    "HEADER-1": {
+      "id": "HEADER-1",
+      "meta": {
+        "code": "Temperature Time Series",
+        "text": "Temperature Time Series"
+      },
+      "parents": [
+        "COLUMN-1"
+      ],
+      "type": "HEADER"
+    },
+    "HEADER-2": {
+      "id": "HEADER-2",
+      "meta": {
+        "code": "Temperature Gauge",
+        "text": "Current Temperature"
+      },
+      "parents": [
+        "COLUMN-2"
+      ],
+      "type": "HEADER"
+    },
+    "HEADER-3": {
+      "id": "HEADER-3",
+      "meta": {
+        "code": "Raw Data Table",
+        "text": "Recent PLC Readings"
+      },
+      "parents": [
+        "COLUMN-3"
+      ],
+      "type": "HEADER"
+    },
+    "CHART-1": {
+      "children": [],
+      "id": "CHART-1",
+      "meta": {
+        "code": "CHART-1",
+        "slice_name": "Temperature Time Series",
+        "slice_id": 1,
+        "default_filters": "{}",
+        "color_scheme": "superset",
+        "label_colors": "{}",
+        "timed_refresh_immune_slices": "[]",
+        "expanded_slices": "{}",
+        "refresh_frequency": 0,
+        "default_filters_non_extra_forms": "{}",
+        "color_scheme_domain": [],
+        "native_filter": false
+      },
+      "parents": [
+        "COLUMN-1"
+      ],
+      "type": "CHART"
+    },
+    "CHART-2": {
+      "children": [],
+      "id": "CHART-2",
+      "meta": {
+        "code": "CHART-2",
+        "slice_name": "Current Temperature Gauge",
+        "slice_id": 2,
+        "default_filters": "{}",
+        "color_scheme": "superset",
+        "label_colors": "{}",
+        "timed_refresh_immune_slices": "[]",
+        "expanded_slices": "{}",
+        "refresh_frequency": 0,
+        "default_filters_non_extra_forms": "{}",
+        "color_scheme_domain": [],
+        "native_filter": false
+      },
+      "parents": [
+        "COLUMN-2"
+      ],
+      "type": "CHART"
+    },
+    "TABLE-1": {
+      "children": [],
+      "id": "TABLE-1",
+      "meta": {
+        "code": "TABLE-1",
+        "slice_name": "Recent PLC Readings",
+        "slice_id": 3,
+        "default_filters": "{}",
+        "color_scheme": "superset",
+        "label_colors": "{}",
+        "timed_refresh_immune_slices": "[]",
+        "expanded_slices": "{}",
+        "refresh_frequency": 0,
+        "default_filters_non_extra_forms": "{}",
+        "color_scheme_domain": [],
+        "native_filter": false
+      },
+      "parents": [
+        "COLUMN-3"
+      ],
+      "type": "TABLE"
+    }
+  },
+  "properties": {
+    "is_draft": false,
+    "filters": {},
+    "color_scheme": "superset",
+    "label_colors": {},
+    "timed_refresh_immune_slices": [],
+    "expanded_slices": {},
+    "refresh_frequency": 0,
+    "default_filters": "{}",
+    "color_scheme_domain": [],
+    "native_filter": false,
+    "css": ""
+  },
+  "metadata": {
+    "filter_immune_slices": [],
+    "timed_refresh_immune_slices": [],
+    "expanded_slices": {},
+    "refresh_frequency": 0,
+    "default_filters": "{}",
+    "color_scheme": "superset",
+    "label_colors": {},
+    "color_scheme_domain": [],
+    "native_filter": false,
+    "css": "",
+    "current_tab": "dashboard",
+    "is_draft": false
+  }
+}

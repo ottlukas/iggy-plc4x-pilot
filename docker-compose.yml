@@ -102,6 +102,9 @@ services:
     environment:
       COMPOSE_PROJECT_NAME: iggy-plc4x-pilot
       PILOT_CONFIG: /app/config.toml
+    depends_on:
+      - superset
+      - iotdb
     restart: unless-stopped
 
 volumes:

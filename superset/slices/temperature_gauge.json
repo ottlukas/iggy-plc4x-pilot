@@ -1,0 +1,43 @@
+{
+  "slice_name": "Current Temperature Gauge",
+  "viz_type": "big_number",
+  "datasource_type": "table",
+  "datasource_id": 1,
+  "metrics": [
+    {
+      "expression": "MAX(temperature)",
+      "metric_name": "max__temperature",
+      "verbose_name": "Current Temperature"
+    }
+  ],
+  "groupby": [],
+  "row_limit": 1,
+  "order_desc": true,
+  "color_scheme": "superset",
+  "big_number_conditional_formatting": [
+    {
+      "color_scheme": "rgb(0, 128, 0)",
+      "target_value": 100,
+      "operator": ">",
+      "inverse": false
+    },
+    {
+      "color_scheme": "rgb(255, 165, 0)",
+      "target_value": 50,
+      "operator": ">",
+      "inverse": false
+    },
+    {
+      "color_scheme": "rgb(255, 0, 0)",
+      "target_value": 25,
+      "operator": "<",
+      "inverse": false
+    }
+  ],
+  "big_number_subtitle": "Latest Reading",
+  "y_axis_title": "",
+  "show_legend": false,
+  "extra_form_data": {},
+  "dashboard_id": 1,
+  "owners": []
+}

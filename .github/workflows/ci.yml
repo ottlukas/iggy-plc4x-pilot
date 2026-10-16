@@ -62,6 +62,34 @@ jobs:
       - name: Run Docker-backed integration test
         run: cargo test --locked --features integration --test integration -- --nocapture
 
+  superset-integration-tests:
+    name: Superset-IoTDB integration
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PILOT_COMPOSE_PROJECT: iggy-plc4x-superset-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run Superset-IoTDB integration test
+        run: cargo test --locked --features integration --test integration superset_iotdb_connection_works -- --nocapture
+
+  hmi-integration-tests:
+    name: HMI control API integration
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PILOT_COMPOSE_PROJECT: iggy-plc4x-hmi-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run HMI integration test
+        run: cargo test --locked --features integration --test integration hmi_control_api_works -- --nocapture
+
   build-images:
     name: Build and publish images
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -94,3 +122,12 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/iggy-plc4x-superset:latest
             ghcr.io/${{ github.repository_owner }}/iggy-plc4x-superset:${{ github.sha }}
+      - name: Publish HMI image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: hmi/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/iggy-plc4x-hmi:latest
+            ghcr.io/${{ github.repository_owner }}/iggy-plc4x-hmi:${{ github.sha }}

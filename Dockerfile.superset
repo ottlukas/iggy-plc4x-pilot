@@ -3,7 +3,8 @@ USER root
 RUN pip install --no-cache-dir apache-iotdb==2.0.11
 COPY superset_config.py /app/pythonpath/superset_config.py
 COPY start-superset.sh /app/start-superset.sh
-RUN chmod 755 /app/start-superset.sh
+COPY init_superset.py /app/init_superset.py
+RUN chmod 755 /app/start-superset.sh /app/init_superset.py
 ENV SUPERSET_CONFIG_PATH=/app/pythonpath/superset_config.py
 USER superset
 EXPOSE 8088

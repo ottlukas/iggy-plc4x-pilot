@@ -1,0 +1,25 @@
+{
+  "slice_name": "Recent PLC Readings",
+  "viz_type": "table",
+  "datasource_type": "table",
+  "datasource_id": 1,
+  "metrics": [],
+  "groupby": [
+    "time",
+    "temperature"
+  ],
+  "columns": [
+    "time",
+    "temperature"
+  ],
+  "row_limit": 50,
+  "order_desc": true,
+  "order_by": "time",
+  "color_scheme": "superset",
+  "table_timestamp_format": "%Y-%m-%d %H:%M:%S",
+  "table_num_format": ".2f",
+  "table_conditional_formatting": [],
+  "extra_form_data": {},
+  "dashboard_id": 1,
+  "owners": []
+}

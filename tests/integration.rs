@@ -29,12 +29,30 @@ impl ComposeStack {
                 "mqtt-to-iggy",
                 "iggy-to-iotdb",
                 "superset",
+                "hmi",
             ])
             .output()
             .map_err(|error| format!("starting Compose stack: {error}"))?;
         if !output.status.success() {
             return Err(format!(
                 "Compose startup failed: {}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+        Ok(())
+    }
+
+    fn start_services(&self, services: &[&str]) -> Result<(), String> {
+        let output = self
+            .command()
+            .args(["up", "-d"])
+            .args(services)
+            .output()
+            .map_err(|error| format!("starting Compose services: {error}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "Compose services startup failed: {}{}",
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             ));
@@ -66,12 +84,18 @@ async fn modbus_to_iotdb_pipeline_writes_a_reading() {
     let client = reqwest::Client::new();
     let endpoint = "http://127.0.0.1:18080/rest/v2/query";
     let superset_health = "http://127.0.0.1:8088/health";
+    let hmi_health = "http://127.0.0.1:8080/api/health";
     let deadline = tokio::time::Instant::now() + Duration::from_secs(8 * 60);
     let mut last_error = String::from("IoTDB has not returned a reading yet");
 
     while tokio::time::Instant::now() < deadline {
         let superset_ready = client
             .get(superset_health)
+            .send()
+            .await
+            .is_ok_and(|response| response.status().is_success());
+        let hmi_ready = client
+            .get(hmi_health)
             .send()
             .await
             .is_ok_and(|response| response.status().is_success());
@@ -90,11 +114,17 @@ async fn modbus_to_iotdb_pipeline_writes_a_reading() {
                     .and_then(|value| value.get("values"))
                     .and_then(serde_json::Value::as_array)
                     .is_some_and(|rows| !rows.is_empty());
-                if has_rows && superset_ready {
+                if has_rows && superset_ready && hmi_ready {
                     return;
                 }
                 last_error = if has_rows {
-                    "IoTDB contains readings, but Superset is not healthy yet".to_owned()
+                    if !superset_ready {
+                        "IoTDB contains readings, but Superset is not healthy yet".to_owned()
+                    } else if !hmi_ready {
+                        "IoTDB and Superset are ready, but HMI is not healthy yet".to_owned()
+                    } else {
+                        "All services are healthy".to_owned()
+                    }
                 } else {
                     format!("IoTDB query has no rows yet: {body}")
                 };
@@ -108,4 +138,119 @@ async fn modbus_to_iotdb_pipeline_writes_a_reading() {
     }
 
     panic!("pipeline did not write a reading before timeout: {last_error}");
+}
+
+#[tokio::test]
+async fn superset_iotdb_connection_works() {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR").to_owned();
+    let project = std::env::var("PILOT_COMPOSE_PROJECT")
+        .unwrap_or_else(|_| format!("iggy-plc4x-superset-{}", std::process::id()));
+    let stack = ComposeStack {
+        project,
+        manifest_dir,
+    };
+    
+    // Start only the required services for Superset-IoTDB test
+    stack
+        .start_services(&["bifromq", "iggy", "iotdb", "superset"])
+        .expect("Compose services should start");
+
+    let client = reqwest::Client::new();
+    let superset_health = "http://127.0.0.1:8088/health";
+    let iotdb_query = "http://127.0.0.1:18080/rest/v2/query";
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5 * 60);
+    let mut last_error = String::from("Superset or IoTDB not ready");
+
+    while tokio::time::Instant::now() < deadline {
+        // Check Superset health
+        let superset_ready = client
+            .get(superset_health)
+            .send()
+            .await
+            .is_ok_and(|response| response.status().is_success());
+
+        // Check IoTDB can respond to queries
+        let iotdb_result = client
+            .post(iotdb_query)
+            .basic_auth("root", Some("root"))
+            .json(&serde_json::json!({ "sql": "SHOW DEVICES" }))
+            .send()
+            .await;
+
+        match iotdb_result {
+            Ok(response) if response.status().is_success() => {
+                if superset_ready {
+                    // Both services are healthy - test is successful
+                    return;
+                }
+                last_error = "IoTDB is ready but Superset is not healthy yet".to_owned();
+            }
+            Ok(response) => {
+                last_error = format!("IoTDB query returned {}", response.status());
+            }
+            Err(error) => last_error = error.to_string(),
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+
+    panic!("Superset-IoTDB connection test failed: {last_error}");
+}
+
+#[tokio::test]
+async fn hmi_control_api_works() {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR").to_owned();
+    let project = std::env::var("PILOT_COMPOSE_PROJECT")
+        .unwrap_or_else(|_| format!("iggy-plc4x-hmi-{}", std::process::id()));
+    let stack = ComposeStack {
+        project,
+        manifest_dir,
+    };
+    
+    // Start the full pipeline including HMI
+    stack
+        .start_services(&["bifromq", "iggy", "iotdb", "modbus-simulator", "plc4x-bridge", "mqtt-to-iggy", "iggy-to-iotdb", "superset", "hmi"])
+        .expect("Compose services should start");
+
+    let client = reqwest::Client::new();
+    let hmi_health = "http://127.0.0.1:8080/api/health";
+    let hmi_status = "http://127.0.0.1:8080/api/pipeline/status";
+    let hmi_plc_status = "http://127.0.0.1:8080/api/plc/status";
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5 * 60);
+    let mut last_error = String::from("HMI not ready");
+
+    while tokio::time::Instant::now() < deadline {
+        // Check HMI health
+        let hmi_ready = client
+            .get(hmi_health)
+            .send()
+            .await
+            .is_ok_and(|response| response.status().is_success());
+
+        if hmi_ready {
+            // Check pipeline status
+            let status_result = client
+                .get(hmi_status)
+                .send()
+                .await;
+            
+            match status_result {
+                Ok(response) if response.status().is_success() => {
+                    let body = response.text().await.unwrap_or_default();
+                    let parsed = serde_json::from_str::<serde_json::Value>(&body).ok();
+                    if parsed.and_then(|v| v.get("health")).is_some() {
+                        // HMI is working and returning pipeline status
+                        return;
+                    }
+                    last_error = "HMI is healthy but pipeline status is incomplete".to_owned();
+                }
+                Ok(response) => {
+                    last_error = format!("HMI pipeline status returned {}", response.status());
+                }
+                Err(error) => last_error = error.to_string(),
+            }
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+
+    panic!("HMI control API test failed: {last_error}");
 }

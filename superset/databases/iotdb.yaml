@@ -1,0 +1,4 @@
+database_name: IoTDB
+sqlalchemy_uri: iotdb://root:root@iotdb:6667
+expose_in_sqla: true
+is_managed_externally: false

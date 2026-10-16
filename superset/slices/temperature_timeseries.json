@@ -1,0 +1,34 @@
+{
+  "slice_name": "Temperature Time Series",
+  "viz_type": "line",
+  "datasource_type": "table",
+  "datasource_id": 1,
+  "metrics": [
+    {
+      "expression": "SUM(temperature)",
+      "metric_name": "sum__temperature",
+      "verbose_name": "SUM(temperature)"
+    }
+  ],
+  "groupby": [
+    "time"
+  ],
+  "columns": [
+    "time",
+    "temperature"
+  ],
+  "row_limit": 1000,
+  "timeseries_limit_metric": null,
+  "order_desc": true,
+  "order_by": "time",
+  "color_scheme": "superset",
+  "line_type": "line",
+  "x_axis_title": "Time",
+  "y_axis_title": "Temperature",
+  "show_legend": true,
+  "show_value": false,
+  "rich_tooltip": true,
+  "extra_form_data": {},
+  "dashboard_id": 1,
+  "owners": []
+}
